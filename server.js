@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 
-const { apiLimiter, loginLimiter } = require('./middleware/rateLimiter');
+const { apiLimiter } = require('./middleware/rateLimiter');
 
 const authRoutes = require('./routes/auth');
 const adminRoutes = require('./routes/admin');
@@ -10,7 +10,7 @@ const teacherRoutes = require('./routes/teacher');
 
 const app = express();
 
-// ADD THIS LINE - Trust proxy for rate limiting
+// Trust proxy for Render deployment
 app.set('trust proxy', 1);
 
 const corsOptions = {
@@ -23,14 +23,9 @@ app.use(helmet());
 app.use(cors(corsOptions));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(apiLimiter);
 
-// Apply general API rate limiting
-app.use('/api', apiLimiter);
-
-// Apply stricter rate limiting for auth routes
-app.use('/api/auth', loginLimiter);
-
-// Health check (exempt from rate limiting)
+// Health check
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
 app.use('/api/auth', authRoutes);
