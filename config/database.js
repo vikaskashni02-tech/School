@@ -1,20 +1,22 @@
 const mysql = require('mysql2/promise');
 
 const pool = mysql.createPool({
-  host: 'srv1874.hstgr.io',
-  user: 'u851023220_jagbirbhardwaj',
-  password: 'Ritesh@576104',
-  database: 'u851023220_jagbirbhardwaj',
+  host: process.env.DB_HOST || 'srv1874.hstgr.io',
+  user: process.env.DB_USER || 'u851023220_jagbirbhardwaj',
+  password: process.env.DB_PASSWORD || 'Ritesh@576104',
+  database: process.env.DB_NAME || 'u851023220_jagbirbhardwaj',
   waitForConnections: true,
-  connectionLimit: 5,
+  connectionLimit: 3,
   queueLimit: 0,
   enableKeepAlive: true,
   keepAliveInitialDelay: 0,
-  // Proper connection settings
-  connectTimeout: 30000,
-  acquireTimeout: 30000,
+  // Remove acquireTimeout as it's invalid for MySQL2
+  connectTimeout: 10000,
   // Add SSL settings for better connection
-  ssl: false
+  ssl: false,
+  // Add retry settings
+  retryDelay: 1000,
+  maxRetries: 2
 });
 
 pool.on('connection', (connection) => {
@@ -48,4 +50,28 @@ const testConnection = async () => {
 // Test connection after a short delay to allow server to start
 setTimeout(testConnection, 2000);
 
-module.exports = pool;
+// Wrapper function to handle database queries with retry logic
+const executeQuery = async (query, params = []) => {
+  let retries = 3;
+  while (retries > 0) {
+    try {
+      const result = await pool.execute(query, params);
+      return result;
+    } catch (error) {
+      retries--;
+      console.error(`Database query failed, ${retries} retries left:`, error.message);
+      
+      if (retries === 0) {
+        throw error;
+      }
+      
+      // Wait before retry
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+  }
+};
+
+module.exports = {
+  pool,
+  execute: executeQuery
+};
