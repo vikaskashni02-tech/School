@@ -20,9 +20,11 @@ app.use(helmet());
 app.use(cors(corsOptions));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// More lenient rate limiter - applied after CORS and JSON parsing
 app.use(apiLimiter);
 
-// Health check
+// Health check (exempt from rate limiting)
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
 app.use('/api/auth', authRoutes);
