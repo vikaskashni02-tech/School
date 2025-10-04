@@ -6,13 +6,15 @@ const pool = mysql.createPool({
   password: 'Ritesh@576104',
   database: 'u851023220_jagbirbhardwaj',
   waitForConnections: true,
-  connectionLimit: 10,
+  connectionLimit: 5,
   queueLimit: 0,
   enableKeepAlive: true,
   keepAliveInitialDelay: 0,
-  acquireTimeout: 60000,
-  timeout: 60000,
-  reconnect: true
+  // Proper connection settings
+  connectTimeout: 30000,
+  acquireTimeout: 30000,
+  // Add SSL settings for better connection
+  ssl: false
 });
 
 pool.on('connection', (connection) => {
@@ -33,10 +35,17 @@ const testConnection = async () => {
     console.log('✅ Database connection test successful');
     connection.release();
   } catch (error) {
-    console.error('❌ Database connection test failed:', error);
+    console.error('❌ Database connection test failed:', error.message);
+    console.error('Error code:', error.code);
+    console.error('This might be due to:');
+    console.error('1. Database server is down');
+    console.error('2. Wrong credentials');
+    console.error('3. Firewall blocking connection');
+    console.error('4. Network issues');
   }
 };
 
-testConnection();
+// Test connection after a short delay to allow server to start
+setTimeout(testConnection, 2000);
 
 module.exports = pool;
