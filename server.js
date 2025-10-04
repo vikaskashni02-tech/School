@@ -11,15 +11,7 @@ const teacherRoutes = require('./routes/teacher');
 const app = express();
 
 const corsOptions = {
-  origin: [
-    'http://localhost:8080',
-    'capacitor://localhost',
-    'ionic://localhost',
-    'http://localhost',
-    'http://localhost:8080',
-    'http://localhost:3000',
-    'https://cdn.lottowin66.com'
-  ],
+  origin: true, // Allow all origins
   credentials: true,
   optionsSuccessStatus: 200
 };
@@ -41,15 +33,13 @@ const PORT = 3000;
 
 const db = require('./config/database');
 
-db.getConnection()
-  .then(connection => {
-    console.log('✅ Database connected successfully');
-    connection.release();
-  })
-  .catch(err => {
+db.connect((err) => {
+  if (err) {
     console.error('❌ Database connection failed:', err.message);
     process.exit(1);
-  });
+  }
+  console.log('✅ Database connected');
+});
 
 app.use((err, req, res, next) => {
   console.error('Error:', err);
@@ -71,15 +61,7 @@ const server = app.listen(PORT, () => {
 
 const io = require('socket.io')(server, {
   cors: {
-    origin: [
-      'http://localhost:8080',
-      'capacitor://localhost',
-      'ionic://localhost',
-      'http://localhost',
-      'http://localhost:8080',
-      'http://localhost:3000',
-      'https://cdn.lottowin66.com'
-    ],
+    origin: true, // Allow all origins for Socket.IO
     credentials: true
   }
 });
