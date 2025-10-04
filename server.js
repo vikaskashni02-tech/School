@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
-require('dotenv').config();
+
 const { apiLimiter } = require('./middleware/rateLimiter');
 
 const authRoutes = require('./routes/auth');
@@ -12,7 +12,7 @@ const app = express();
 
 const corsOptions = {
   origin: [
-    process.env.FRONTEND_URL || 'http://localhost:8080',
+    'http://localhost:8080',
     'capacitor://localhost',
     'ionic://localhost',
     'http://localhost',
@@ -37,7 +37,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/teacher', teacherRoutes);
 
-const PORT = process.env.PORT || 3000;
+const PORT = 3000;
 
 const db = require('./config/database');
 
@@ -54,14 +54,14 @@ db.getConnection()
 app.use((err, req, res, next) => {
   console.error('Error:', err);
   res.status(err.status || 500).json({
-    message: process.env.NODE_ENV === 'production' ? 'Internal server error' : err.message
+    message: 'development' === 'production' ? 'Internal server error' : err.message
   });
 });
 
 const server = app.listen(PORT, () => {
   console.log('----------------------------------------');
   console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`🌐 Environment: development`);
   console.log(`🌐 API endpoints:`);
   console.log('   /api/auth');
   console.log('   /api/admin');
@@ -72,7 +72,7 @@ const server = app.listen(PORT, () => {
 const io = require('socket.io')(server, {
   cors: {
     origin: [
-      process.env.FRONTEND_URL || 'http://localhost:8080',
+      'http://localhost:8080',
       'capacitor://localhost',
       'ionic://localhost',
       'http://localhost',

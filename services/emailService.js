@@ -1,24 +1,24 @@
 const nodemailer = require('nodemailer');
 
 const transporter = nodemailer.createTransport({
-  host: process.env.EMAIL_HOST,
-  port: process.env.EMAIL_PORT,
+  host: 'smtp.gmail.com',
+  port: 587,
   secure: false,
   auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASSWORD
+    user: 'riteshmudgil192004@gmail.com',
+    pass: 'fayd nflh rrzh lrqy'
   }
 });
 
 const sendEmail = async (to, subject, html) => {
   try {
-    if (!process.env.EMAIL_USER || process.env.EMAIL_USER === 'your-email@gmail.com') {
+    if (!('riteshmudgil192004@gmail.com') || 'riteshmudgil192004@gmail.com' === 'your-email@gmail.com') {
       console.log('📧 Email not configured. Would send:', { to, subject });
       return { success: false, message: 'Email not configured' };
     }
 
     const info = await transporter.sendMail({
-      from: process.env.EMAIL_FROM,
+      from: 'My Schedule <noreply@school.com>',
       to,
       subject,
       html
@@ -40,7 +40,7 @@ const sendWelcomeEmail = (email, name, password) => {
     <p><strong>Login Credentials:</strong></p>
     <p>Email: ${email}<br>Password: ${password}</p>
     <p>Please login and change your password immediately.</p>
-    <p><a href="${process.env.FRONTEND_URL}/login">Login Now</a></p>
+    <p><a href="http://localhost:8080/login">Login Now</a></p>
   `;
   return sendEmail(email, 'Welcome to School Management', html);
 };
@@ -64,7 +64,7 @@ const sendCoverageAssignment = (email, name, className, time, date) => {
     <p><strong>Class:</strong> ${className}<br>
     <strong>Time:</strong> ${time}<br>
     <strong>Date:</strong> ${date}</p>
-    <p><a href="${process.env.FRONTEND_URL}/teacher">View Schedule</a></p>
+    <p><a href="http://localhost:8080/teacher">View Schedule</a></p>
   `;
   return sendEmail(email, 'Coverage Assignment', html);
 };
@@ -75,7 +75,7 @@ const sendLeaveRequestNotification = (email, teacherName, startDate, endDate) =>
     <p>A new leave request has been submitted:</p>
     <p><strong>Teacher:</strong> ${teacherName}<br>
     <strong>Period:</strong> ${startDate} to ${endDate}</p>
-    <p><a href="${process.env.FRONTEND_URL}/admin">Review Request</a></p>
+    <p><a href="http://localhost:8080/admin">Review Request</a></p>
   `;
   return sendEmail(email, 'New Leave Request', html);
 };
