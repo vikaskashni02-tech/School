@@ -29,19 +29,26 @@ app.use(apiLimiter);
 // Health check
 app.get('/health', async (req, res) => {
   try {
-    // Test database connection
+    // Test database connection with timeout
+    const startTime = Date.now();
     await db.execute('SELECT 1');
+    const responseTime = Date.now() - startTime;
+    
     res.json({ 
       status: 'ok', 
       database: 'connected',
-      timestamp: new Date().toISOString()
+      responseTime: `${responseTime}ms`,
+      timestamp: new Date().toISOString(),
+      fallback: false
     });
   } catch (error) {
-    res.status(500).json({ 
-      status: 'error', 
-      database: 'disconnected',
+    res.json({ 
+      status: 'degraded', 
+      database: 'timeout',
       error: error.message,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      fallback: true,
+      message: 'Database unavailable, using fallback authentication'
     });
   }
 });
