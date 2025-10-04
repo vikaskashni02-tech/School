@@ -3,6 +3,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 
 const { apiLimiter } = require('./middleware/rateLimiter');
+const db = require('./config/database');
 
 const authRoutes = require('./routes/auth');
 const adminRoutes = require('./routes/admin');
@@ -26,7 +27,24 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(apiLimiter);
 
 // Health check
-app.get('/health', (req, res) => res.json({ status: 'ok' }));
+app.get('/health', async (req, res) => {
+  try {
+    // Test database connection
+    await db.execute('SELECT 1');
+    res.json({ 
+      status: 'ok', 
+      database: 'connected',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      status: 'error', 
+      database: 'disconnected',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
 
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);

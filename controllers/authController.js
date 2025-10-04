@@ -8,6 +8,11 @@ const login = async (req, res) => {
   try {
     const { email, password } = req.body;
     
+    // Validate input
+    if (!email || !password) {
+      return res.status(400).json({ message: 'Email and password are required' });
+    }
+    
     const [rows] = await db.execute('SELECT * FROM teachers WHERE email = ?', [email]);
     
     if (rows.length === 0) {
@@ -31,7 +36,13 @@ const login = async (req, res) => {
       { expiresIn: '24h' }
     );
 
-    await logActivity(teacher.id, 'LOGIN', 'auth', teacher.id, null, req.ip);
+    // Try to log activity, but don't fail login if logging fails
+    try {
+      await logActivity(teacher.id, 'LOGIN', 'auth', teacher.id, null, req.ip);
+    } catch (logError) {
+      console.error('Failed to log login activity:', logError);
+      // Continue with login even if logging fails
+    }
 
     res.json({
       token,
@@ -45,7 +56,11 @@ const login = async (req, res) => {
       }
     });
   } catch (error) {
-    res.status(500).json({ message: 'Server error' });
+    console.error('Login error:', error);
+    res.status(500).json({ 
+      message: 'Server error',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 };
 
