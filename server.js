@@ -10,6 +10,9 @@ const teacherRoutes = require('./routes/teacher');
 
 const app = express();
 
+// ADD THIS LINE - Trust proxy for rate limiting
+app.set('trust proxy', 1);
+
 const corsOptions = {
   origin: true, // Allow all origins
   credentials: true,
