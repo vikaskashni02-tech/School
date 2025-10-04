@@ -1,6 +1,10 @@
 const db = require('../config/database');
 
 const logActivity = async (userId, action, entityType = null, entityId = null, details = null, ipAddress = null) => {
+  // Temporarily disable activity logging to isolate login issues
+  console.log(`Activity log: ${action} by user ${userId}`);
+  return;
+  
   try {
     // Check if activity_logs table exists before attempting to insert
     const [tables] = await db.execute("SHOW TABLES LIKE 'activity_logs'");
