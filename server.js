@@ -31,16 +31,6 @@ app.use('/api/teacher', teacherRoutes);
 
 const PORT = 3000;
 
-const db = require('./config/database');
-
-db.connect((err) => {
-  if (err) {
-    console.error('❌ Database connection failed:', err.message);
-    process.exit(1);
-  }
-  console.log('✅ Database connected');
-});
-
 app.use((err, req, res, next) => {
   console.error('Error:', err);
   res.status(err.status || 500).json({
