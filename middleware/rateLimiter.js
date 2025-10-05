@@ -26,6 +26,7 @@ const apiLimiter = rateLimit({
   legacyHeaders: false,
   skip: (req) => {
     // Skip rate limiting for health checks and static files
+    if (req.method === 'OPTIONS') return true; // allow CORS preflight
     return req.path === '/health' || 
            req.path === '/api/health' ||
            req.path.startsWith('/static/');
