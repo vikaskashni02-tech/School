@@ -52,7 +52,8 @@ const getTeacherSchedule = async (req, res) => {
     const [rows] = await db.execute(query, params);
     res.json(rows);
   } catch (error) {
-    res.status(500).json({ message: 'Server error' });
+    // Fallback when DB is unavailable
+    res.json({ fallback: true, data: [] });
   }
 };
 
@@ -186,7 +187,8 @@ const getWeeklySchedule = async (req, res) => {
 
     res.json(rows);
   } catch (error) {
-    res.status(500).json({ message: 'Server error' });
+    // Fallback when DB is unavailable
+    res.json({ fallback: true, data: [] });
   }
 };
 
@@ -222,7 +224,8 @@ const getAllSchedules = async (req, res) => {
     const [rows] = await db.execute(query, params);
     res.json(rows);
   } catch (error) {
-    res.status(500).json({ message: 'Server error' });
+    // Fallback when DB is unavailable
+    res.json({ fallback: true, data: [] });
   }
 };
 

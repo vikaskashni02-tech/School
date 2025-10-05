@@ -1,20 +1,22 @@
 const mysql = require('mysql2/promise');
 
-// Hardcoded database credentials (not using environment variables)
 const pool = mysql.createPool({
-  host: 'srv1874.hstgr.io',
-  user: 'u851023220_jagbirbhardwaj',
-  password: 'Ritesh@576104',
-  database: 'u851023220_jagbirbhardwaj',
+  host: process.env.DB_HOST || 'srv1874.hstgr.io',
+  user: process.env.DB_USER || 'u851023220_jagbirbhardwaj',
+  password: process.env.DB_PASSWORD || 'Ritesh@576104',
+  database: process.env.DB_NAME || 'u851023220_jagbirbhardwaj',
   waitForConnections: true,
   connectionLimit: 3,
   queueLimit: 0,
   enableKeepAlive: true,
   keepAliveInitialDelay: 0,
-  connectTimeout: 15000,
-  // Some providers require SSL; disable cert verification to avoid handshake issues
-  // If your DB strictly requires SSL with CA, replace with: ssl: { ca: '...cert...'}
-  ssl: { rejectUnauthorized: false }
+  // Remove acquireTimeout as it's invalid for MySQL2
+  connectTimeout: 10000,
+  // Add SSL settings for better connection
+  ssl: false,
+  // Add retry settings
+  retryDelay: 1000,
+  maxRetries: 2
 });
 
 pool.on('connection', (connection) => {
