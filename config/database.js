@@ -1,7 +1,10 @@
 require('dotenv').config();
 const mysql = require('mysql2/promise');
 
-const pool = mysql.createPool({
+const connectTimeoutEnv = process.env.DB_CONNECT_TIMEOUT;
+const connectTimeoutMs = Number(connectTimeoutEnv);
+
+const poolConfig = {
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
@@ -11,12 +14,16 @@ const pool = mysql.createPool({
   queueLimit: 0,
   enableKeepAlive: true,
   keepAliveInitialDelay: 0,
-  // Remove acquireTimeout as it's invalid for MySQL2
-  connectTimeout: 20000,
   // Add SSL settings for better connection (optional)
-  ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : undefined,
-  // Note: mysql2 does not support retryDelay/maxRetries in pool config
-});
+  ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : undefined
+};
+
+// Only set connectTimeout if a positive value is provided. Set DB_CONNECT_TIMEOUT=0 to omit it entirely.
+if (!Number.isNaN(connectTimeoutMs) && connectTimeoutMs > 0) {
+  poolConfig.connectTimeout = connectTimeoutMs;
+}
+
+const pool = mysql.createPool(poolConfig);
 
 pool.on('connection', (_connection) => {
   console.log('✅ New database connection established');
