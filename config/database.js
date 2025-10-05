@@ -12,12 +12,10 @@ const pool = mysql.createPool({
   enableKeepAlive: true,
   keepAliveInitialDelay: 0,
   // Remove acquireTimeout as it's invalid for MySQL2
-  connectTimeout: 10000,
+  connectTimeout: 20000,
   // Add SSL settings for better connection (optional)
   ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : undefined,
-  // Add retry settings
-  retryDelay: 1000,
-  maxRetries: 2
+  // Note: mysql2 does not support retryDelay/maxRetries in pool config
 });
 
 pool.on('connection', (_connection) => {
