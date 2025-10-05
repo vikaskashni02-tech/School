@@ -1,3 +1,4 @@
+require('dotenv').config();
 const jwt = require('jsonwebtoken');
 
 const auth = (req, res, next) => {
@@ -8,7 +9,12 @@ const auth = (req, res, next) => {
   }
 
   try {
-    const decoded = jwt.verify(token, '994619ae2c8de2af7bf429ee59f81255449cc8446c7835377534c95f944231f9');
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+      console.error('JWT secret is not configured');
+      return res.status(500).json({ message: 'Server configuration error' });
+    }
+    const decoded = jwt.verify(token, secret);
     req.user = decoded;
     next();
   } catch (error) {

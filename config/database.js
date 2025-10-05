@@ -1,25 +1,26 @@
+require('dotenv').config();
 const mysql = require('mysql2/promise');
 
 const pool = mysql.createPool({
-  host: process.env.DB_HOST || 'srv1874.hstgr.io',
-  user: process.env.DB_USER || 'u851023220_jagbirbhardwaj',
-  password: process.env.DB_PASSWORD || 'Ritesh@576104',
-  database: process.env.DB_NAME || 'u851023220_jagbirbhardwaj',
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
   waitForConnections: true,
-  connectionLimit: 3,
+  connectionLimit: Number(process.env.DB_CONNECTION_LIMIT || 5),
   queueLimit: 0,
   enableKeepAlive: true,
   keepAliveInitialDelay: 0,
   // Remove acquireTimeout as it's invalid for MySQL2
   connectTimeout: 10000,
-  // Add SSL settings for better connection
-  ssl: false,
+  // Add SSL settings for better connection (optional)
+  ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : undefined,
   // Add retry settings
   retryDelay: 1000,
   maxRetries: 2
 });
 
-pool.on('connection', (connection) => {
+pool.on('connection', (_connection) => {
   console.log('✅ New database connection established');
 });
 

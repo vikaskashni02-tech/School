@@ -1,3 +1,4 @@
+require('dotenv').config();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
@@ -34,7 +35,7 @@ const login = async (req, res) => {
 
       const token = jwt.sign(
         { id: teacher.id, email: teacher.email, role: teacher.role, name: teacher.name },
-        '994619ae2c8de2af7bf429ee59f81255449cc8446c7835377534c95f944231f9',
+        process.env.JWT_SECRET,
         { expiresIn: '24h' }
       );
 
@@ -77,7 +78,7 @@ const login = async (req, res) => {
       if (account && account.password === password) {
         const token = jwt.sign(
           { id: account.user.id, email: account.user.email, role: account.user.role, name: account.user.name },
-          '994619ae2c8de2af7bf429ee59f81255449cc8446c7835377534c95f944231f9',
+          process.env.JWT_SECRET,
           { expiresIn: '24h' }
         );
 

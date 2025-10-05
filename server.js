@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -27,7 +28,7 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(apiLimiter);
 
 // Health check
-app.get('/health', async (req, res) => {
+app.get('/health', async (_req, res) => {
   try {
     // Test database connection with timeout
     const startTime = Date.now();
@@ -57,12 +58,12 @@ app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/teacher', teacherRoutes);
 
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
-app.use((err, req, res, next) => {
+app.use((err, _req, res, _next) => {
   console.error('Error:', err);
   res.status(err.status || 500).json({
-    message: 'development' === 'production' ? 'Internal server error' : err.message
+    message: process.env.NODE_ENV === 'production' ? 'Internal server error' : err.message
   });
 });
 
