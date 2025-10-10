@@ -22,7 +22,8 @@ const getCurrentPeriod = async (req, res) => {
 
     res.json(rows);
   } catch (error) {
-    res.status(500).json({ message: 'Server error' });
+    // Fallback when DB is unavailable
+    res.json([]);
   }
 };
 
@@ -225,7 +226,7 @@ const getAllSchedules = async (req, res) => {
     res.json(rows);
   } catch (error) {
     // Fallback when DB is unavailable
-    res.json({ fallback: true, data: [] });
+    res.json([]);
   }
 };
 

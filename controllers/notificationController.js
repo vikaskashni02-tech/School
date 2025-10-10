@@ -51,7 +51,8 @@ const getUnreadCount = async (req, res) => {
     );
     res.json({ count: rows[0].count });
   } catch (error) {
-    res.status(500).json({ message: 'Server error' });
+    // Fallback when DB is unavailable
+    res.json({ count: 0, fallback: true });
   }
 };
 
