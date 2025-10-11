@@ -20,10 +20,15 @@ const app = express();
 app.set('trust proxy', 1);
 
 const corsOptions = {
-  origin: true, // Allow all origins
+  origin: [
+    'https://riteshsharma.fun/',
+    'http://localhost:8080/', // For local development
+    'https://school-3kmf.onrender.com' // Keep your current backend
+  ],
   credentials: true,
   optionsSuccessStatus: 200
 };
+
 
 app.use(helmet());
 app.use(compression()); // Enable gzip compression
