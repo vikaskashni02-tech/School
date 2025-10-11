@@ -63,6 +63,23 @@ const markAbsent = async (req, res) => {
     const { teacherId, reason, date } = req.body;
     const targetDate = date || moment().format('YYYY-MM-DD');
 
+    console.log('Marking teacher absent:', { teacherId, reason, targetDate });
+
+    // Validate teacherId
+    if (!teacherId || isNaN(teacherId)) {
+      return res.status(400).json({ message: 'Valid teacher ID is required' });
+    }
+
+    // Check if teacher exists
+    const [teacherExists] = await db.execute(
+      'SELECT id, name, email FROM teachers WHERE id = ? AND status = "active"',
+      [teacherId]
+    );
+
+    if (teacherExists.length === 0) {
+      return res.status(404).json({ message: 'Teacher not found or inactive' });
+    }
+
     // Check if already marked absent
     const [existing] = await db.execute(
       'SELECT * FROM absent_teachers WHERE teacher_id = ? AND absent_date = ?',
@@ -73,37 +90,80 @@ const markAbsent = async (req, res) => {
       return res.status(400).json({ message: 'Teacher already marked absent for this date' });
     }
 
+    // Insert absence record
     await db.execute(
       'INSERT INTO absent_teachers (teacher_id, absent_date, reason) VALUES (?, ?, ?)',
-      [teacherId, targetDate, reason]
+      [teacherId, targetDate, reason || 'No reason provided']
     );
 
+    console.log('Absence record created successfully');
+
     // Auto-assign free teachers using smart algorithm
-    const assigned = await autoAssignSmartCoverage(teacherId, targetDate);
-
-    const { createNotification } = require('./notificationController');
-    await createNotification(teacherId, 'Marked Absent', `You have been marked absent for ${targetDate}`, 'warning');
-
-    const [teacher] = await db.execute('SELECT email, name FROM teachers WHERE id = ?', [teacherId]);
-    if (teacher.length > 0) {
-      await sendAbsenceNotification(teacher[0].email, teacher[0].name, targetDate, reason);
+    let assigned = 0;
+    try {
+      assigned = await autoAssignSmartCoverage(teacherId, targetDate);
+      console.log('Coverage assigned:', assigned);
+    } catch (coverageError) {
+      console.error('Coverage assignment failed:', coverageError.message);
+      // Continue even if coverage assignment fails
     }
 
-    const io = req.app.get('io');
-    if (io) {
-      io.emit('absence-marked', { teacherId, date: targetDate });
-      io.emit('dashboard-update');
+    // Create notification
+    try {
+      const { createNotification } = require('./notificationController');
+      await createNotification(teacherId, 'Marked Absent', `You have been marked absent for ${targetDate}`, 'warning');
+    } catch (notificationError) {
+      console.error('Notification creation failed:', notificationError.message);
+      // Continue even if notification fails
     }
+
+    // Send email notification
+    try {
+      const teacher = teacherExists[0];
+      await sendAbsenceNotification(teacher.email, teacher.name, targetDate, reason);
+    } catch (emailError) {
+      console.error('Email notification failed:', emailError.message);
+      // Continue even if email fails
+    }
+
+    // Emit socket events (non-blocking)
+    setImmediate(() => {
+      try {
+        const io = req.app.get('io');
+        if (io) {
+          io.emit('absence-marked', { teacherId, date: targetDate });
+          io.emit('dashboard-update');
+        }
+      } catch (socketError) {
+        console.error('Socket emission failed:', socketError.message);
+      }
+    });
 
     res.json({ 
-      message: 'Teacher marked absent and coverage assigned',
-      coverageAssigned: assigned
+      message: 'Teacher marked absent successfully',
+      coverageAssigned: assigned,
+      teacherName: teacherExists[0].name,
+      date: targetDate
     });
   } catch (error) {
+    console.error('Error in markAbsent:', error);
+    
     if (error.code === 'ER_DUP_ENTRY') {
       return res.status(400).json({ message: 'Teacher already marked absent for this date' });
     }
-    res.status(500).json({ message: 'Server error', error: error.message });
+    
+    if (error.code === 'ER_NO_REFERENCED_ROW_2') {
+      return res.status(400).json({ message: 'Invalid teacher ID provided' });
+    }
+    
+    if (error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT') {
+      return res.status(503).json({ message: 'Database connection failed. Please try again.' });
+    }
+    
+    res.status(500).json({ 
+      message: 'Failed to mark teacher absent', 
+      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+    });
   }
 };
 

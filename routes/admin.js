@@ -64,4 +64,37 @@ router.delete('/bulk/schedules', bulkDeleteSchedules);
 // Dashboard
 router.get('/dashboard', getDashboardStats);
 
+// Test endpoint for debugging
+router.post('/test-absent', async (req, res) => {
+  try {
+    const { teacherId, reason, date } = req.body;
+    console.log('Test absent request:', { teacherId, reason, date });
+    
+    // Basic validation
+    if (!teacherId) {
+      return res.status(400).json({ message: 'Teacher ID is required' });
+    }
+    
+    // Test database connection
+    const [teachers] = await require('../config/database').execute('SELECT id, name FROM teachers WHERE id = ?', [teacherId]);
+    
+    if (teachers.length === 0) {
+      return res.status(404).json({ message: 'Teacher not found' });
+    }
+    
+    res.json({ 
+      message: 'Test successful', 
+      teacher: teachers[0],
+      receivedData: { teacherId, reason, date }
+    });
+  } catch (error) {
+    console.error('Test endpoint error:', error);
+    res.status(500).json({ 
+      message: 'Test failed', 
+      error: error.message,
+      code: error.code 
+    });
+  }
+});
+
 module.exports = router;

@@ -10,10 +10,17 @@ const poolConfig = {
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
   waitForConnections: true,
-
+  connectionLimit: 20, // Increased from 10
   queueLimit: 0,
+  acquireTimeout: 30000, // Reduced from 60000
+  timeout: 30000, // Reduced from 60000
   enableKeepAlive: true,
   keepAliveInitialDelay: 0,
+  reconnect: true,
+  // Performance optimizations
+  multipleStatements: false,
+  charset: 'utf8mb4',
+  timezone: 'local',
   // Add SSL settings for better connection (optional)
   ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : undefined
 };
@@ -58,26 +65,56 @@ setTimeout(testConnection, 2000);
 
 // Wrapper function to handle database queries with retry logic
 const executeQuery = async (query, params = []) => {
-  let retries = 3;
+  let retries = 2; // Reduced retries for faster failure
   while (retries > 0) {
     try {
+      const startTime = Date.now();
       const result = await pool.execute(query, params);
+      const duration = Date.now() - startTime;
+      
+      if (duration > 2000) { // Reduced threshold from 5000ms
+        console.warn(`Slow query detected (${duration}ms):`, query.substring(0, 100));
+      }
+      
       return result;
     } catch (error) {
       retries--;
-      console.error(`Database query failed, ${retries} retries left:`, error.message);
+      console.error(`Database query failed, ${retries} retries left:`, {
+        error: error.message,
+        code: error.code,
+        query: query.substring(0, 100),
+        params: params
+      });
       
       if (retries === 0) {
+        console.error('All database retries exhausted, throwing error');
         throw error;
       }
       
-      // Wait before retry
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Wait before retry with reduced delay
+      const delay = (3 - retries) * 500; // Reduced delay
+      await new Promise(resolve => setTimeout(resolve, delay));
     }
+  }
+};
+
+// Batch query execution for multiple queries
+const executeBatch = async (queries) => {
+  const connection = await pool.getConnection();
+  try {
+    const results = [];
+    for (const { query, params } of queries) {
+      const [result] = await connection.execute(query, params || []);
+      results.push(result);
+    }
+    return results;
+  } finally {
+    connection.release();
   }
 };
 
 module.exports = {
   pool,
-  execute: executeQuery
+  execute: executeQuery,
+  executeBatch
 };

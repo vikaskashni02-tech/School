@@ -40,6 +40,13 @@ const removeAbsence = async (req, res) => {
     );
 
     await createNotification(absence[0].teacher_id, 'Absence Removed', 'Your absence marking has been removed', 'info');
+    
+    // Emit socket event for real-time updates
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('absence-removed', { absenceId: id, teacherId: absence[0].teacher_id });
+    }
+    
     res.json({ message: 'Absence removed successfully' });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });

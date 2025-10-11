@@ -2,6 +2,7 @@ const bcrypt = require('bcryptjs');
 const db = require('../config/database');
 const { createNotification } = require('./notificationController');
 const { sendWelcomeEmail } = require('../services/emailService');
+const { clearCache } = require('../middleware/cache');
 
 const addTeacher = async (req, res) => {
   try {
@@ -15,6 +16,7 @@ const addTeacher = async (req, res) => {
 
     await createNotification(result.insertId, 'Welcome!', 'Your account has been created successfully', 'success');
     await sendWelcomeEmail(email, name, password);
+    clearCache('teachers');
     res.json({ message: 'Teacher added successfully', id: result.insertId });
   } catch (error) {
     if (error.code === 'ER_DUP_ENTRY') {
@@ -26,15 +28,73 @@ const addTeacher = async (req, res) => {
 
 const getTeachers = async (req, res) => {
   try {
-    const [rows] = await db.execute('SELECT id, name, email, role, status, department, subject, phone FROM teachers');
-    res.json(rows);
+    console.log('Fetching teachers with query params:', req.query);
+    
+    // First, test if teachers table exists
+    await db.execute('DESCRIBE teachers');
+    console.log('Teachers table exists');
+    
+    const { page = 1, limit = 50, search, status, role } = req.query;
+    const offset = (page - 1) * limit;
+    
+    let query = 'SELECT id, name, email, role, status, department, subject, phone FROM teachers';
+    let countQuery = 'SELECT COUNT(*) as total FROM teachers';
+    const params = [];
+    const conditions = [];
+    
+    if (search) {
+      conditions.push('(name LIKE ? OR email LIKE ?)');
+      params.push(`%${search}%`, `%${search}%`);
+    }
+    
+    if (status) {
+      conditions.push('status = ?');
+      params.push(status);
+    }
+    
+    if (role) {
+      conditions.push('role = ?');
+      params.push(role);
+    }
+    
+    if (conditions.length > 0) {
+      const whereClause = ' WHERE ' + conditions.join(' AND ');
+      query += whereClause;
+      countQuery += whereClause;
+    }
+    
+    query += ' ORDER BY name LIMIT ? OFFSET ?';
+    params.push(parseInt(limit), parseInt(offset));
+    
+    // Execute queries separately for better error handling
+    const [countResult] = await db.execute(countQuery, params.slice(0, -2));
+    const [rows] = await db.execute(query, params);
+    
+    console.log('Count result:', countResult);
+    console.log('Rows result:', rows);
+    
+    const total = countResult[0]?.total || 0;
+    
+    res.json({
+      data: rows,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total: total,
+        totalPages: Math.ceil(total / limit)
+      }
+    });
   } catch (error) {
-    // Fallback response when DB is unavailable
-    const fallbackTeachers = [
-      { id: 1, name: 'Admin User', email: 'admin@school.com', role: 'admin', status: 'active', department: 'Administration', subject: null, phone: null },
-      { id: 2, name: 'John Doe', email: 'john@school.com', role: 'teacher', status: 'active', department: 'Mathematics', subject: 'Algebra', phone: null }
-    ];
-    res.json(fallbackTeachers);
+    console.error('Error fetching teachers:', error);
+    console.error('Error details:', {
+      message: error.message,
+      code: error.code,
+      stack: error.stack
+    });
+    res.status(500).json({ 
+      message: 'Error fetching teachers', 
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined 
+    });
   }
 };
 
@@ -58,6 +118,7 @@ const addSchedule = async (req, res) => {
     );
 
     await createNotification(teacherId, 'New Schedule', `You have been assigned to ${className} on ${day}`, 'info');
+    clearCache('schedules');
     res.json({ message: 'Schedule added successfully' });
   } catch (error) {
     if (error.code === 'ER_DUP_ENTRY') {
@@ -93,6 +154,7 @@ const updateTeacher = async (req, res) => {
       return res.status(404).json({ message: 'Teacher not found' });
     }
     
+    clearCache('teachers');
     res.json({ message: 'Teacher updated successfully' });
   } catch (error) {
     console.error('Update error:', error);
@@ -107,6 +169,7 @@ const deleteTeacher = async (req, res) => {
   try {
     const { id } = req.params;
     await db.execute('DELETE FROM teachers WHERE id = ?', [id]);
+    clearCache('teachers');
     res.json({ message: 'Teacher deleted successfully' });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
@@ -132,6 +195,7 @@ const deleteSchedule = async (req, res) => {
   try {
     const { id } = req.params;
     await db.execute('DELETE FROM teacher_schedule WHERE id = ?', [id]);
+    clearCache('schedules');
     res.json({ message: 'Schedule deleted successfully' });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
@@ -140,32 +204,18 @@ const deleteSchedule = async (req, res) => {
 
 const getDashboardStats = async (req, res) => {
   try {
-    const [activeTeachers] = await db.execute('SELECT COUNT(*) as count FROM teachers WHERE status = "active" AND role = "teacher"');
-    const [currentClasses] = await db.execute(`
-      SELECT COUNT(*) as count FROM teacher_schedule ts
-      WHERE ts.day = DAYNAME(NOW()) 
-      AND ts.period_start <= TIME(NOW()) 
-      AND ts.period_end > TIME(NOW())
+    // Single optimized query to get all stats at once
+    const [results] = await db.execute(`
+      SELECT 
+        (SELECT COUNT(*) FROM teachers WHERE status = 'active' AND role = 'teacher') as activeTeachers,
+        (SELECT COUNT(*) FROM teacher_schedule ts WHERE ts.day = DAYNAME(NOW()) AND ts.period_start <= TIME(NOW()) AND ts.period_end > TIME(NOW())) as currentClasses,
+        (SELECT COUNT(*) FROM teacher_schedule ts LEFT JOIN absent_teachers at ON ts.teacher_id = at.teacher_id AND at.absent_date = CURDATE() WHERE ts.day = DAYNAME(NOW()) AND at.teacher_id IS NOT NULL AND ts.covered_by IS NULL) as emptyPeriods,
+        (SELECT COUNT(*) FROM absent_teachers WHERE absent_date = CURDATE()) as totalAbsent,
+        (SELECT COUNT(*) FROM leave_requests WHERE status = 'pending') as pendingLeaves,
+        (SELECT COUNT(*) FROM teacher_schedule) as totalSchedules
     `);
-    const [emptyPeriods] = await db.execute(`
-      SELECT COUNT(*) as count FROM teacher_schedule ts
-      LEFT JOIN absent_teachers at ON ts.teacher_id = at.teacher_id AND at.absent_date = CURDATE()
-      WHERE ts.day = DAYNAME(NOW()) 
-      AND at.teacher_id IS NOT NULL 
-      AND ts.covered_by IS NULL
-    `);
-    const [totalAbsent] = await db.execute('SELECT COUNT(*) as count FROM absent_teachers WHERE absent_date = CURDATE()');
-    const [pendingLeaves] = await db.execute('SELECT COUNT(*) as count FROM leave_requests WHERE status = "pending"');
-    const [totalSchedules] = await db.execute('SELECT COUNT(*) as count FROM teacher_schedule');
 
-    res.json({
-      activeTeachers: activeTeachers[0].count,
-      currentClasses: currentClasses[0].count,
-      emptyPeriods: emptyPeriods[0].count,
-      totalAbsent: totalAbsent[0].count,
-      pendingLeaves: pendingLeaves[0].count,
-      totalSchedules: totalSchedules[0].count
-    });
+    res.json(results[0]);
   } catch (error) {
     // Fallback when DB is unavailable
     res.json({
