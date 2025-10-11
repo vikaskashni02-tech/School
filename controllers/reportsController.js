@@ -13,7 +13,8 @@ const getTeacherWorkload = async (req, res) => {
     `);
     res.json(rows);
   } catch (error) {
-    res.status(500).json({ message: 'Server error' });
+    console.error('getTeacherWorkload error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
 
