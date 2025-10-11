@@ -21,9 +21,9 @@ app.set('trust proxy', 1);
 
 const corsOptions = {
   origin: [
-    'https://riteshsharma.fun/',
-    'http://localhost:8080/', // For local development
-    'https://school-3kmf.onrender.com' // Keep your current backend
+    'https://riteshsharma.fun',
+    'http://localhost:8080',
+    'https://school-3kmf.onrender.com'
   ],
   credentials: true,
   optionsSuccessStatus: 200
@@ -32,8 +32,33 @@ const corsOptions = {
 
 app.use(helmet());
 app.use(compression()); // Enable gzip compression
+
+// Add explicit CORS headers
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  const allowedOrigins = [
+    'https://riteshsharma.fun',
+    'http://localhost:8080',
+    'https://school-3kmf.onrender.com'
+  ];
+  
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
+  
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  
+  if (req.method === 'OPTIONS') {
+    res.sendStatus(200);
+    return;
+  }
+  
+  next();
+});
+
 app.use(cors(corsOptions));
-// Explicitly handle preflight for all routes
 app.options('*', cors(corsOptions));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
