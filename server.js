@@ -20,11 +20,18 @@ const app = express();
 app.set('trust proxy', 1);
 
 const corsOptions = {
-  origin: ['http://localhost:3000', 'https://riteshsharma.fun'],
+  origin: function (origin, callback) {
+    const allowedOrigins = ['http://localhost:3000', 'https://riteshsharma.fun'];
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   optionsSuccessStatus: 200,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin']
 };
 
 
@@ -36,10 +43,7 @@ app.use((req, res, next) => {
   const origin = req.headers.origin;
   const allowedOrigins = ['http://localhost:3000', 'https://riteshsharma.fun'];
   
-  if (allowedOrigins.includes(origin)) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-  }
-  
+  res.setHeader('Access-Control-Allow-Origin', allowedOrigins.includes(origin) ? origin : 'https://riteshsharma.fun');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
   res.setHeader('Access-Control-Allow-Credentials', 'true');
@@ -60,51 +64,25 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' })); // Large limit f
 app.use(apiLimiter);
 
 // Health check
-app.get('/health', async (_req, res) => {
+app.get('/health', (_req, res) => {
+  res.json({ 
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    server: 'running'
+  });
+});
+
+// Database health check
+app.get('/health/db', async (_req, res) => {
   try {
-    // Test database connection with timeout
-    const startTime = Date.now();
     await db.execute('SELECT 1');
-    const responseTime = Date.now() - startTime;
-    
-    res.json({ 
-      status: 'ok', 
-      database: 'connected',
-      responseTime: `${responseTime}ms`,
-      timestamp: new Date().toISOString(),
-      fallback: false
-    });
+    res.json({ status: 'ok', database: 'connected' });
   } catch (error) {
-    res.json({ 
-      status: 'degraded', 
-      database: 'timeout',
-      error: error.message,
-      timestamp: new Date().toISOString(),
-      fallback: true,
-      message: 'Database unavailable, using fallback authentication'
-    });
+    res.status(503).json({ status: 'error', database: 'disconnected', error: error.message });
   }
 });
 
-// Database connection middleware
-app.use('/api', async (req, res, next) => {
-  try {
-    await db.execute('SELECT 1');
-    next();
-  } catch (error) {
-    console.warn('Database unavailable, using fallback mode');
-    if (req.path.includes('/auth/login')) {
-      // Allow login with fallback authentication
-      next();
-    } else {
-      res.status(503).json({
-        error: 'Service temporarily unavailable',
-        message: 'Database connection issue',
-        fallback: true
-      });
-    }
-  }
-});
+// Remove database connection middleware to prevent 503 errors
 
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', cacheMiddleware('short'), adminRoutes);

@@ -10,18 +10,18 @@ const poolConfig = {
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
   waitForConnections: true,
-  connectionLimit: 10,
+  connectionLimit: 5,
   queueLimit: 0,
-  acquireTimeout: 60000,
-  timeout: 60000,
-  connectTimeout: 60000,
+  acquireTimeout: 30000,
+  timeout: 30000,
+  connectTimeout: 20000,
   enableKeepAlive: true,
   keepAliveInitialDelay: 0,
   reconnect: true,
   multipleStatements: false,
   charset: 'utf8mb4',
-  timezone: 'local',
-  ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : undefined
+  timezone: '+00:00',
+  ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false
 };
 
 // Override connectTimeout if specified in env
@@ -64,35 +64,20 @@ setTimeout(testConnection, 2000);
 
 // Wrapper function to handle database queries with retry logic
 const executeQuery = async (query, params = []) => {
-  let retries = 2; // Reduced retries for faster failure
+  let retries = 1;
   while (retries > 0) {
     try {
-      const startTime = Date.now();
       const result = await pool.execute(query, params);
-      const duration = Date.now() - startTime;
-      
-      if (duration > 2000) { // Reduced threshold from 5000ms
-        console.warn(`Slow query detected (${duration}ms):`, query.substring(0, 100));
-      }
-      
       return result;
     } catch (error) {
       retries--;
-      console.error(`Database query failed, ${retries} retries left:`, {
-        error: error.message,
-        code: error.code,
-        query: query.substring(0, 100),
-        params: params
-      });
+      console.error(`Database query failed:`, error.message);
       
       if (retries === 0) {
-        console.error('All database retries exhausted, throwing error');
         throw error;
       }
       
-      // Wait before retry with reduced delay
-      const delay = (3 - retries) * 500; // Reduced delay
-      await new Promise(resolve => setTimeout(resolve, delay));
+      await new Promise(resolve => setTimeout(resolve, 1000));
     }
   }
 };
