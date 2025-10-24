@@ -20,24 +20,33 @@ const app = express();
 app.set('trust proxy', 1);
 
 const corsOptions = {
-  origin: true, // Allow all origins - no restrictions
+  origin: ['http://localhost:3000', 'https://riteshsharma.fun'],
   credentials: true,
-  optionsSuccessStatus: 200
+  optionsSuccessStatus: 200,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 };
 
 
 app.use(helmet());
 app.use(compression()); // Enable gzip compression
 
-// Add unlimited CORS headers - no origin restrictions
+// Enhanced CORS middleware
 app.use((req, res, next) => {
-  res.setHeader('Access-Control-Allow-Origin', '*'); // Allow all origins
-  res.setHeader('Access-Control-Allow-Methods', '*'); // Allow all methods
-  res.setHeader('Access-Control-Allow-Headers', '*'); // Allow all headers
+  const origin = req.headers.origin;
+  const allowedOrigins = ['http://localhost:3000', 'https://riteshsharma.fun'];
+  
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
+  
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
   res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Max-Age', '86400');
   
   if (req.method === 'OPTIONS') {
-    res.sendStatus(200);
+    res.status(200).end();
     return;
   }
   
@@ -46,8 +55,8 @@ app.use((req, res, next) => {
 
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
-app.use(express.json({ limit: '0' })); // No size limit
-app.use(express.urlencoded({ extended: true, limit: '0' })); // No size limit
+app.use(express.json({ limit: '50mb' })); // Large limit for requests
+app.use(express.urlencoded({ extended: true, limit: '50mb' })); // Large limit for requests
 app.use(apiLimiter);
 
 // Health check
@@ -74,6 +83,26 @@ app.get('/health', async (_req, res) => {
       fallback: true,
       message: 'Database unavailable, using fallback authentication'
     });
+  }
+});
+
+// Database connection middleware
+app.use('/api', async (req, res, next) => {
+  try {
+    await db.execute('SELECT 1');
+    next();
+  } catch (error) {
+    console.warn('Database unavailable, using fallback mode');
+    if (req.path.includes('/auth/login')) {
+      // Allow login with fallback authentication
+      next();
+    } else {
+      res.status(503).json({
+        error: 'Service temporarily unavailable',
+        message: 'Database connection issue',
+        fallback: true
+      });
+    }
   }
 });
 
@@ -161,14 +190,15 @@ const server = app.listen(PORT, () => {
 
 const io = require('socket.io')(server, {
   cors: {
-    origin: true, // Allow all origins for Socket.IO
+    origin: ['http://localhost:3000', 'https://riteshsharma.fun'],
+    methods: ['GET', 'POST'],
     credentials: true
   },
-  maxHttpBufferSize: 0, // No buffer size limit
-  pingTimeout: 0, // No ping timeout
-  pingInterval: 0, // No ping interval
-  upgradeTimeout: 0, // No upgrade timeout
-  allowEIO3: true // Allow all Engine.IO versions
+  transports: ['polling', 'websocket'],
+  pingTimeout: 60000,
+  pingInterval: 25000,
+  upgradeTimeout: 30000,
+  allowEIO3: true
 });
 
 io.on('connection', (socket) => {

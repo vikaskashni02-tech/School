@@ -10,22 +10,21 @@ const poolConfig = {
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
   waitForConnections: true,
-  connectionLimit: 0, // 0 = unlimited connections
-  queueLimit: 0, // 0 = unlimited queue
-  acquireTimeout: 0, // 0 = no timeout
-  timeout: 0, // 0 = no timeout
+  connectionLimit: 10,
+  queueLimit: 0,
+  acquireTimeout: 60000,
+  timeout: 60000,
+  connectTimeout: 60000,
   enableKeepAlive: true,
   keepAliveInitialDelay: 0,
   reconnect: true,
-  // Performance optimizations
   multipleStatements: false,
   charset: 'utf8mb4',
   timezone: 'local',
-  // Add SSL settings for better connection (optional)
   ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : undefined
 };
 
-// Only set connectTimeout if a positive value is provided. Set DB_CONNECT_TIMEOUT=0 to omit it entirely.
+// Override connectTimeout if specified in env
 if (!Number.isNaN(connectTimeoutMs) && connectTimeoutMs > 0) {
   poolConfig.connectTimeout = connectTimeoutMs;
 }
