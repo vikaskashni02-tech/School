@@ -22,14 +22,16 @@ app.set('trust proxy', 1);
 const corsOptions = {
   origin: ['http://localhost:3000', 'https://riteshsharma.fun'],
   credentials: true,
-  optionsSuccessStatus: 200
+  optionsSuccessStatus: 200,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 };
 
 
 app.use(helmet());
 app.use(compression()); // Enable gzip compression
 
-// Add CORS headers for specific origins
+// Enhanced CORS middleware
 app.use((req, res, next) => {
   const origin = req.headers.origin;
   const allowedOrigins = ['http://localhost:3000', 'https://riteshsharma.fun'];
@@ -39,11 +41,12 @@ app.use((req, res, next) => {
   }
   
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
   res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Max-Age', '86400');
   
   if (req.method === 'OPTIONS') {
-    res.sendStatus(200);
+    res.status(200).end();
     return;
   }
   
@@ -168,13 +171,14 @@ const server = app.listen(PORT, () => {
 const io = require('socket.io')(server, {
   cors: {
     origin: ['http://localhost:3000', 'https://riteshsharma.fun'],
+    methods: ['GET', 'POST'],
     credentials: true
   },
-  maxHttpBufferSize: 0, // No buffer size limit
-  pingTimeout: 0, // No ping timeout
-  pingInterval: 0, // No ping interval
-  upgradeTimeout: 0, // No upgrade timeout
-  allowEIO3: true // Allow all Engine.IO versions
+  transports: ['polling', 'websocket'],
+  pingTimeout: 60000,
+  pingInterval: 25000,
+  upgradeTimeout: 30000,
+  allowEIO3: true
 });
 
 io.on('connection', (socket) => {
