@@ -1,9 +1,21 @@
 const NodeCache = require('node-cache');
 
-// Create cache instances with different TTL
-const shortCache = new NodeCache({ stdTTL: 60 }); // 1 minute
-const mediumCache = new NodeCache({ stdTTL: 300 }); // 5 minutes
-const longCache = new NodeCache({ stdTTL: 1800 }); // 30 minutes
+// Create cache instances with unlimited storage and no TTL limits
+const shortCache = new NodeCache({ 
+  stdTTL: 0, // No expiration
+  maxKeys: 0, // Unlimited keys
+  checkperiod: 0 // No cleanup period
+});
+const mediumCache = new NodeCache({ 
+  stdTTL: 0, // No expiration
+  maxKeys: 0, // Unlimited keys
+  checkperiod: 0 // No cleanup period
+});
+const longCache = new NodeCache({ 
+  stdTTL: 0, // No expiration
+  maxKeys: 0, // Unlimited keys
+  checkperiod: 0 // No cleanup period
+});
 
 const cacheMiddleware = (duration = 'medium') => {
   return (req, res, next) => {

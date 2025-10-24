@@ -10,10 +10,10 @@ const poolConfig = {
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
   waitForConnections: true,
-  connectionLimit: 20, // Increased from 10
-  queueLimit: 0,
-  acquireTimeout: 30000, // Reduced from 60000
-  timeout: 30000, // Reduced from 60000
+  connectionLimit: 0, // 0 = unlimited connections
+  queueLimit: 0, // 0 = unlimited queue
+  acquireTimeout: 0, // 0 = no timeout
+  timeout: 0, // 0 = no timeout
   enableKeepAlive: true,
   keepAliveInitialDelay: 0,
   reconnect: true,

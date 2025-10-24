@@ -20,11 +20,7 @@ const app = express();
 app.set('trust proxy', 1);
 
 const corsOptions = {
-  origin: [
-    'https://riteshsharma.fun',
-    'http://localhost:8080',
-    'https://school-3kmf.onrender.com'
-  ],
+  origin: true, // Allow all origins - no restrictions
   credentials: true,
   optionsSuccessStatus: 200
 };
@@ -33,21 +29,11 @@ const corsOptions = {
 app.use(helmet());
 app.use(compression()); // Enable gzip compression
 
-// Add explicit CORS headers
+// Add unlimited CORS headers - no origin restrictions
 app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  const allowedOrigins = [
-    'https://riteshsharma.fun',
-    'http://localhost:8080',
-    'https://school-3kmf.onrender.com'
-  ];
-  
-  if (allowedOrigins.includes(origin)) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-  }
-  
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Origin', '*'); // Allow all origins
+  res.setHeader('Access-Control-Allow-Methods', '*'); // Allow all methods
+  res.setHeader('Access-Control-Allow-Headers', '*'); // Allow all headers
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   
   if (req.method === 'OPTIONS') {
@@ -60,8 +46,8 @@ app.use((req, res, next) => {
 
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(express.json({ limit: '0' })); // No size limit
+app.use(express.urlencoded({ extended: true, limit: '0' })); // No size limit
 app.use(apiLimiter);
 
 // Health check
@@ -102,62 +88,6 @@ app.get('/api/test-auth', auth, (req, res) => {
     user: req.user,
     timestamp: new Date().toISOString()
   });
-});
-
-// Execute SQL commands from test_schedules.sql
-app.post('/api/execute-test-sql', async (req, res) => {
-  try {
-    // Clear existing test data
-    await db.execute('DELETE FROM teacher_schedule WHERE teacher_id IN (1, 2, 3)');
-    
-    // Execute all INSERT commands from test_schedules.sql
-    const testSchedules = [
-      [1, 'Monday', '07:20:00', '08:10:00', 'Test Class 1A', 'English'],
-      [1, 'Monday', '08:10:00', '09:00:00', 'Test Class 1B', 'English'],
-      [1, 'Monday', '09:00:00', '09:50:00', 'Test Class 1C', 'English'],
-      [1, 'Monday', '10:10:00', '11:00:00', 'Test Class 1D', 'English'],
-      [1, 'Monday', '11:00:00', '11:50:00', 'Test Class 1E', 'English'],
-      [2, 'Monday', '12:00:00', '12:50:00', 'Test Class 2A', 'Math'],
-      [2, 'Monday', '13:00:00', '13:50:00', 'Test Class 2B', 'Math'],
-      [2, 'Monday', '14:00:00', '14:50:00', 'Test Class 2C', 'Math'],
-      [2, 'Monday', '15:00:00', '15:50:00', 'Test Class 2D', 'Math'],
-      [2, 'Monday', '16:00:00', '16:50:00', 'Test Class 2E', 'Math'],
-      [3, 'Monday', '18:00:00', '18:50:00', 'Test Class 3A', 'Science'],
-      [3, 'Monday', '19:00:00', '19:50:00', 'Test Class 3B', 'Science'],
-      [3, 'Monday', '20:00:00', '20:50:00', 'Test Class 3C', 'Science'],
-      [1, 'Tuesday', '07:20:00', '08:10:00', 'Test Class 1A', 'English'],
-      [2, 'Tuesday', '14:00:00', '14:50:00', 'Test Class 2C', 'Math'],
-      [3, 'Tuesday', '19:00:00', '19:50:00', 'Test Class 3B', 'Science'],
-      [1, 'Wednesday', '07:20:00', '08:10:00', 'Test Class 1A', 'English'],
-      [2, 'Wednesday', '14:00:00', '14:50:00', 'Test Class 2C', 'Math'],
-      [3, 'Wednesday', '19:00:00', '19:50:00', 'Test Class 3B', 'Science'],
-      [1, 'Thursday', '07:20:00', '08:10:00', 'Test Class 1A', 'English'],
-      [2, 'Thursday', '14:00:00', '14:50:00', 'Test Class 2C', 'Math'],
-      [3, 'Thursday', '19:00:00', '19:50:00', 'Test Class 3B', 'Science'],
-      [1, 'Friday', '07:20:00', '08:10:00', 'Test Class 1A', 'English'],
-      [2, 'Friday', '14:00:00', '14:50:00', 'Test Class 2C', 'Math'],
-      [3, 'Friday', '19:00:00', '19:50:00', 'Test Class 3B', 'Science'],
-      [1, 'Saturday', '07:20:00', '08:10:00', 'Test Class 1A', 'English'],
-      [2, 'Saturday', '14:00:00', '14:50:00', 'Test Class 2C', 'Math'],
-      [1, 'Sunday', '07:20:00', '08:10:00', 'Test Class 1A', 'English'],
-      [2, 'Sunday', '14:00:00', '14:50:00', 'Test Class 2C', 'Math']
-    ];
-    
-    for (const schedule of testSchedules) {
-      await db.execute(
-        'INSERT INTO teacher_schedule (teacher_id, day, period_start, period_end, class_name, subject) VALUES (?, ?, ?, ?, ?, ?)',
-        schedule
-      );
-    }
-    
-    res.json({
-      message: 'Test schedules executed successfully',
-      totalSchedules: testSchedules.length,
-      note: 'All commands from test_schedules.sql executed'
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
 });
 
 // Test database endpoint
@@ -233,7 +163,12 @@ const io = require('socket.io')(server, {
   cors: {
     origin: true, // Allow all origins for Socket.IO
     credentials: true
-  }
+  },
+  maxHttpBufferSize: 0, // No buffer size limit
+  pingTimeout: 0, // No ping timeout
+  pingInterval: 0, // No ping interval
+  upgradeTimeout: 0, // No upgrade timeout
+  allowEIO3: true // Allow all Engine.IO versions
 });
 
 io.on('connection', (socket) => {
