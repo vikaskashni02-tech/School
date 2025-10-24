@@ -20,7 +20,7 @@ const app = express();
 app.set('trust proxy', 1);
 
 const corsOptions = {
-  origin: true, // Allow all origins - no restrictions
+  origin: ['http://localhost:3000', 'https://riteshsharma.fun'],
   credentials: true,
   optionsSuccessStatus: 200
 };
@@ -29,11 +29,17 @@ const corsOptions = {
 app.use(helmet());
 app.use(compression()); // Enable gzip compression
 
-// Add unlimited CORS headers - no origin restrictions
+// Add CORS headers for specific origins
 app.use((req, res, next) => {
-  res.setHeader('Access-Control-Allow-Origin', '*'); // Allow all origins
-  res.setHeader('Access-Control-Allow-Methods', '*'); // Allow all methods
-  res.setHeader('Access-Control-Allow-Headers', '*'); // Allow all headers
+  const origin = req.headers.origin;
+  const allowedOrigins = ['http://localhost:3000', 'https://riteshsharma.fun'];
+  
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
+  
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   
   if (req.method === 'OPTIONS') {
@@ -161,7 +167,7 @@ const server = app.listen(PORT, () => {
 
 const io = require('socket.io')(server, {
   cors: {
-    origin: true, // Allow all origins for Socket.IO
+    origin: ['http://localhost:3000', 'https://riteshsharma.fun'],
     credentials: true
   },
   maxHttpBufferSize: 0, // No buffer size limit
