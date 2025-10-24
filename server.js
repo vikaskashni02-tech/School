@@ -52,8 +52,8 @@ app.use((req, res, next) => {
 
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
-app.use(express.json({ limit: '0' })); // No size limit
-app.use(express.urlencoded({ extended: true, limit: '0' })); // No size limit
+app.use(express.json({ limit: '50mb' })); // Large limit for requests
+app.use(express.urlencoded({ extended: true, limit: '50mb' })); // Large limit for requests
 app.use(apiLimiter);
 
 // Health check
